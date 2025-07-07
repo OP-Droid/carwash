@@ -715,5 +715,82 @@
 
         <!-- Template Javascript -->
         <script src="js/main.js"></script>
+        <!-- Cards JavaScript -->
+        <script>
+// On page load...
+document.addEventListener('DOMContentLoaded', () => {
+  fetch('/api/plans')               // ① GET your plans JSON
+    .then(res => res.json())
+    .then(plans => renderPlans(plans))
+    .catch(err => console.error('Error loading plans:', err));
+});
+
+function renderPlans(plans) {
+  const container = document.getElementById('plans-container');
+  container.innerHTML = '';         // clear placeholder
+
+  plans.forEach(plan => {
+    const col = document.createElement('div');
+    col.className = 'col-md-4';
+
+    col.innerHTML = `
+      <div class="price-item ${plan.featured ? 'featured-item' : ''}">
+        <div class="price-header">
+          <h3>${plan.name}</h3>
+          <h2><span>KES </span><strong>${plan.price}</strong></h2>
+        </div>
+        <div class="price-body">
+          <ul>
+            ${plan.features.map(f => `
+              <li>
+                <i class="far fa-${f.included ? 'check' : 'times'}-circle"></i>
+                ${f.label}
+              </li>`).join('')}
+          </ul>
+        </div>
+        <div class="price-footer">
+          <button class="btn btn-custom pay-btn"
+                  data-plan-id="${plan.id}">
+            Pay KES ${plan.price}
+          </button>
+        </div>
+      </div>
+    `;
+    container.appendChild(col);
+  });
+
+  // attach click handlers for each Pay button
+  document.querySelectorAll('.pay-btn').forEach(btn => {
+    btn.addEventListener('click', evt => {
+      const planId = evt.currentTarget.dataset.planId;
+      initiateMpesa(planId);
+    });
+  });
+}
+
+function initiateMpesa(planId) {
+  // Optionally collect user phone from a prompt or form field
+  const phone = prompt('Enter your M-PESA phone number (e.g. 2547XXXXXXXX):');
+  if (!phone) return alert('Phone number is required');
+
+  fetch('/api/mpesa/pay', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ planId, phone })
+  })
+  .then(res => res.json())
+  .then(resp => {
+    if (resp.success) {
+      alert('STK Push sent! Check your phone to complete payment.');
+    } else {
+      alert('Payment failed: ' + resp.message);
+    }
+  })
+  .catch(err => {
+    console.error('MPESA error', err);
+    alert('Something went wrong. Try again later.');
+  });
+}
+        </script>
     </body>
 </html>
